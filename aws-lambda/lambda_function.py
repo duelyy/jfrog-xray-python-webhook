@@ -3,7 +3,6 @@ import requests
 from slack_sdk.webhook import WebhookClient
 from violation_function import *
 
-NUM_LIST = 5
 SLACK_URL = "https://hooks.slack.com/services/secret-slack-webhook-id"
 
 def lambda_handler(event, context):
@@ -18,9 +17,11 @@ def lambda_handler(event, context):
 
 def slack_template(event):
     
+    critical_count = count_severity(event, "Critical")
     high_count = count_severity(event, "High")
     medium_count = count_severity(event, "Medium")
     low_count = count_severity(event, "Low")
+    sev_list = ["Critical", "High", "Medium", "Low"]
 
     payload_block = []
     
@@ -28,28 +29,41 @@ def slack_template(event):
             "type": "header",
             "text": {{
                 "type": "plain_text",
-                "text": "Security Violation ({high_count} High, {medium_count} Medium, {low_count} Low)"
+                "text": "Security Violation ({critical_count} Critical, {high_count} High, {medium_count} Medium, {low_count} Low)"
             }}
         }}'''
     header_block_load = json.loads(header_block)
     
+    # Header that shows summary of high, medium, low count
     payload_block.append(header_block_load)
+    # Output watch and policy name
+    payload_block.append(watch_policy_section(event))
+
+    #TODO: Tidy the below up using map functions
+
+    # Critical
+    if critical_count > 0:
+        payload_block.append(violation_sev_section("Critical", critical_count))
+        payload_block.append(violation_docker_section("Critical", event))
+        payload_block.append(violation_cve("Critical", event))
     
     # High
-    payload_block.append(violation_sev_section("High", NUM_LIST, high_count))
-    payload_block.append(violation_docker_section(event))
+    if high_count > 0:
+        payload_block.append(violation_sev_section("High", high_count))
+        payload_block.append(violation_docker_section("High", event))
+        payload_block.append(violation_cve("High", event))
     
-    for issue in event['issues']:
-        if issue['severity'] == "High" and issue['type'] == security:
-            
+    # Medium
+    if medium_count > 0:
+        payload_block.append(violation_sev_section("Medium", medium_count))
+        payload_block.append(violation_docker_section("Medium", event))
+        payload_block.append(violation_cve("Medium", event))
     
-    # # Medium
-    # payload_block.append(violation_sev_section("Medium", NUM_LIST, medium_count))
-    # payload_block.append(violation_docker_section(event))
-    
-    # # Low
-    # payload_block.append(violation_sev_section("Low", NUM_LIST, low_count))
-    # payload_block.append(violation_docker_section(event))
+    # Low
+    if low_count > 0:
+        payload_block.append(violation_sev_section("Low", low_count))
+        payload_block.append(violation_docker_section("Low", event))
+        payload_block.append(violation_cve("Low", event))
 
     return payload_block
 
@@ -60,6 +74,11 @@ def count_severity(event, sev):
             count += 1
 
     return count
+
+def build_artifactory_url():
+    # TODO: Build the URL to the docker violation
+    # https://artifactory.url.address/ui/packages/docker:<display_name>?name=<prepend_display_name>&type=packages&activeTab=builds
+    return
 
 def send_slack_message(payload):
     webhook = WebhookClient(SLACK_URL)

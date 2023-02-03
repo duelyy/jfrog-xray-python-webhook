@@ -2,12 +2,11 @@ import json
 import requests
 import re
 import urllib
+import os
 from urllib.parse import urlparse
 
 from slack_sdk.webhook import WebhookClient
 from violation_function import *
-
-SLACK_URL = "https://hooks.slack.com/services/secret-slack-webhook-id"
 
 def lambda_handler(event, context):
 
@@ -84,10 +83,10 @@ def count_severity(event, sev):
     return count
 
 def send_slack_message(payload):
-    webhook = WebhookClient(SLACK_URL)
+    url = os.environ['SLACK_URL']
+    webhook = WebhookClient(url)
 
     response = webhook.send(
         text="fallback",
         blocks = payload
     )
-

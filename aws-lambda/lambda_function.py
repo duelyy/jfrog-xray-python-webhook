@@ -1,5 +1,9 @@
 import json
 import requests
+import re
+import urllib
+from urllib.parse import urlparse
+
 from slack_sdk.webhook import WebhookClient
 from violation_function import *
 
@@ -38,32 +42,36 @@ def slack_template(event):
     payload_block.append(header_block_load)
     # Output watch and policy name
     payload_block.append(watch_policy_section(event))
-
+    
     #TODO: Tidy the below up using map functions
-
+    
     # Critical
     if critical_count > 0:
         payload_block.append(violation_sev_section("Critical", critical_count))
         payload_block.append(violation_docker_section("Critical", event))
         payload_block.append(violation_cve("Critical", event))
+        payload_block.append(build_artifactory_url(event))
     
     # High
     if high_count > 0:
         payload_block.append(violation_sev_section("High", high_count))
         payload_block.append(violation_docker_section("High", event))
         payload_block.append(violation_cve("High", event))
+        payload_block.append(build_artifactory_url(event))
     
     # Medium
     if medium_count > 0:
         payload_block.append(violation_sev_section("Medium", medium_count))
         payload_block.append(violation_docker_section("Medium", event))
         payload_block.append(violation_cve("Medium", event))
+        payload_block.append(build_artifactory_url(event))
     
     # Low
     if low_count > 0:
         payload_block.append(violation_sev_section("Low", low_count))
         payload_block.append(violation_docker_section("Low", event))
         payload_block.append(violation_cve("Low", event))
+        payload_block.append(build_artifactory_url(event))
 
     return payload_block
 
@@ -74,11 +82,6 @@ def count_severity(event, sev):
             count += 1
 
     return count
-
-def build_artifactory_url():
-    # TODO: Build the URL to the docker violation
-    # https://artifactory.url.address/ui/packages/docker:<display_name>?name=<prepend_display_name>&type=packages&activeTab=builds
-    return
 
 def send_slack_message(payload):
     webhook = WebhookClient(SLACK_URL)
